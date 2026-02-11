@@ -34,6 +34,7 @@ import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, oref
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
 import { ClientService, ObjectService } from "./services";
+import { setupTabIndicatorsSubscription } from "./tabindicator";
 import { isPreviewWindow } from "./windowtype";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribeSingle } from "./wps";
@@ -100,6 +101,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         },
     });
     setupBadgesSubscription();
+    setupTabIndicatorsSubscription();
 }
 
 const blockCache = new Map<string, Map<string, any>>();

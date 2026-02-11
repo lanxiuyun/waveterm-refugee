@@ -165,6 +165,9 @@
             "always"
           ]
         },
+        "term:exitindicator": {
+          "type": "boolean"
+        },
         "term:durable": {
           "type": "boolean"
         },

@@ -466,6 +466,18 @@ type WaveNotificationOptions struct {
 	Silent bool   `json:"silent,omitempty"`
 }
 
+type TabIndicator struct {
+	Icon         string  `json:"icon"`
+	Color        string  `json:"color"`
+	Priority     float64 `json:"priority"`
+	ClearOnFocus bool    `json:"clearonfocus"`
+}
+
+type TabIndicatorEventData struct {
+	TabId     string        `json:"tabid"`
+	Indicator *TabIndicator `json:"indicator"`
+}
+
 type VDomUrlRequestData struct {
 	Method  string            `json:"method"`
 	URL     string            `json:"url"`

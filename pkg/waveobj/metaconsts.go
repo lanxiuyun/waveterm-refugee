@@ -129,6 +129,7 @@ const (
 	MetaKey_TermBellSound                    = "term:bellsound"
 	MetaKey_TermBellIndicator                = "term:bellindicator"
 	MetaKey_TermOsc52                        = "term:osc52"
+	MetaKey_TermExitIndicator                = "term:exitindicator"
 	MetaKey_TermDurable                      = "term:durable"
 
 	MetaKey_WebZoom                          = "web:zoom"

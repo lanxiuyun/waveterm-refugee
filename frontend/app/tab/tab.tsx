@@ -4,11 +4,18 @@
 import { getTabBadgeAtom } from "@/app/store/badge";
 import { refocusNode } from "@/app/store/global";
 import { getTabModelByTabId } from "@/app/store/tab-model";
+import {
+    clearAllTabIndicators,
+    clearTabIndicator,
+    clearTabIndicatorFromFocus,
+    getTabIndicatorAtom,
+    type TabIndicator,
+} from "@/app/store/tabindicator";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
 import { Button } from "@/element/button";
 import { validateCssColor } from "@/util/color-validator";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
@@ -43,6 +50,7 @@ interface TabVProps {
     isNew: boolean;
     badges?: Badge[] | null;
     flagColor?: string | null;
+    indicator?: TabIndicator | null;
     locked?: boolean;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
@@ -65,6 +73,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         isNew,
         badges,
         flagColor,
+        indicator,
         locked,
         onClick,
         onClose,
@@ -190,7 +199,14 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 dragging: isDragging,
                 "new-tab": isNew,
                 locked,
+                "has-indicator": indicator != null,
+                "indicator-breathing": indicator != null && indicator.icon === "none",
             })}
+            style={
+                indicator != null
+                    ? ({ "--tab-indicator-color": indicator.color || "#f59e0b" } as React.CSSProperties)
+                    : undefined
+            }
             onMouseDown={onDragStart}
             onClick={onClick}
             onContextMenu={onContextMenu}
@@ -209,6 +225,15 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 >
                     {displayName}
                 </div>
+                {indicator && indicator.icon !== "none" && (
+                    <div
+                        className="tab-indicator pointer-events-none"
+                        style={{ color: indicator.color || "#f59e0b" }}
+                        title="Activity notification"
+                    >
+                        <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />
+                    </div>
+                )}
                 <TabBadges badges={badges} flagColor={flagColor} />
                 {locked ? (
                     <i
@@ -263,6 +288,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             flagColor = null;
         }
     }
+    const indicator = useAtomValue(getTabIndicatorAtom(id));
 
     const locked = !!tabData?.meta?.["tab:locked"];
 
@@ -288,6 +314,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     }, [tabModel]);
 
     const handleTabClick = () => {
+        clearTabIndicatorFromFocus(id);
         onSelect();
     };
 
@@ -295,9 +322,16 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             e.preventDefault();
             const menu = buildTabContextMenu(id, renameRef, onClose, env);
+            if (indicator) {
+                menu.unshift(
+                    { label: "Clear Tab Indicator", click: () => clearTabIndicator(id) },
+                    { label: "Clear All Indicators", click: () => clearAllTabIndicators() },
+                    { type: "separator" }
+                );
+            }
             env.showContextMenu(menu, e);
         },
-        [id, onClose, env]
+        [id, indicator, onClose, env]
     );
 
     const handleRename = useCallback(
@@ -320,6 +354,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             isNew={isNew}
             badges={badges}
             flagColor={flagColor}
+            indicator={indicator}
             locked={locked}
             onClick={handleTabClick}
             onClose={onClose}
