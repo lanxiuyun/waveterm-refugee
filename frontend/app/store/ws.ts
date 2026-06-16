@@ -67,14 +67,14 @@ class WSControl {
         this.wsConn.close();
     }
 
-    async connectNow(desc: string) {
+    connectNow(desc: string) {
         if (this.open || this.noReconnect) {
             return;
         }
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
-        this.wsConn = await newWebSocket(
+        this.wsConn = newWebSocket(
             this.baseHostPort + "/ws?stableid=" + encodeURIComponent(this.stableId),
             this.eoOpts
                 ? {
