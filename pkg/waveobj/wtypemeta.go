@@ -40,6 +40,7 @@ type MetaTSType struct {
 	Cmd                 string   `json:"cmd,omitempty"`
 	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`
 	CmdLogin            bool     `json:"cmd:login,omitempty"`
+	CmdPersistent       bool     `json:"cmd:persistent,omitempty"`
 	CmdRunOnStart       bool     `json:"cmd:runonstart,omitempty"`
 	CmdClearOnStart     bool     `json:"cmd:clearonstart,omitempty"`
 	CmdRunOnce          bool     `json:"cmd:runonce,omitempty"`
@@ -75,6 +76,9 @@ type MetaTSType struct {
 	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
+	AiFileDiffChatId     string `json:"aifilediff:chatid,omitempty"`
+	AiFileDiffToolCallId string `json:"aifilediff:toolcallid,omitempty"`
+
 	EditorClear               bool    `json:"editor:*,omitempty"`
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -88,12 +92,25 @@ type MetaTSType struct {
 	SysinfoType string `json:"sysinfo:type,omitempty"`
 
 	// for tabs
+	TabFlagColor        string  `json:"tab:flagcolor,omitempty"`
+	TabBackground       string  `json:"tab:background,omitempty"`
 	BgClear             bool    `json:"bg:*,omitempty"`
 	Bg                  string  `json:"bg,omitempty"`
 	BgOpacity           float64 `json:"bg:opacity,omitempty"`
 	BgBlendMode         string  `json:"bg:blendmode,omitempty"`
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
+
+	// for workspace
+	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
+
+	// for tabs+waveai
+	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
+	WaveAiPanelWidth    int    `json:"waveai:panelwidth,omitempty"`
+	WaveAiModel         string `json:"waveai:model,omitempty"`
+	WaveAiChatId        string `json:"waveai:chatid,omitempty"`
+	WaveAiWidgetContext *bool  `json:"waveai:widgetcontext,omitempty"` // default is true
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            int      `json:"term:fontsize,omitempty"`
@@ -108,20 +125,38 @@ type MetaTSType struct {
 	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
+	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
+	TermCursor              string   `json:"term:cursor,omitempty"`
+	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
+	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
+	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
+	TermOsc52               string   `json:"term:osc52,omitempty"`
+	TermDurable             *bool    `json:"term:durable,omitempty"`
 
-	WebZoom      float64 `json:"web:zoom,omitempty"`
-	WebHideNav   *bool   `json:"web:hidenav,omitempty"`
-	WebPartition string  `json:"web:partition,omitempty"`
+	WebZoom          float64 `json:"web:zoom,omitempty"`
+	WebHideNav       *bool   `json:"web:hidenav,omitempty"`
+	WebPartition     string  `json:"web:partition,omitempty"`
+	WebUserAgentType string  `json:"web:useragenttype,omitempty"`
 
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
+
+	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
+	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
+	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`
+	TsunamiAppId          string            `json:"tsunami:appid,omitempty"`
+	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
+	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
 	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`
 	VDomRoute         string `json:"vdom:route,omitempty"`
 	VDomPersist       bool   `json:"vdom:persist,omitempty"`
+
+	OnboardingGithubStar  bool   `json:"onboarding:githubstar,omitempty"`  // for client
+	OnboardingLastVersion string `json:"onboarding:lastversion,omitempty"` // for client (tracks semver of last 'onboarding' shown)
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }

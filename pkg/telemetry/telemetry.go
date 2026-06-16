@@ -27,6 +27,7 @@ import (
 
 const MaxTzNameLen = 50
 const ActivityEventName = "app:activity"
+const WshRunEventName = "wsh:run"
 
 var cachedTosAgreedTs atomic.Int64
 
@@ -60,28 +61,30 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int                          `json:"activeminutes"`
-	FgMinutes     int                          `json:"fgminutes"`
-	OpenMinutes   int                          `json:"openminutes"`
-	NumTabs       int                          `json:"numtabs"`
-	NumBlocks     int                          `json:"numblocks,omitempty"`
-	NumWindows    int                          `json:"numwindows,omitempty"`
-	NumWS         int                          `json:"numws,omitempty"`
-	NumWSNamed    int                          `json:"numwsnamed,omitempty"`
-	NumSSHConn    int                          `json:"numsshconn,omitempty"`
-	NumWSLConn    int                          `json:"numwslconn,omitempty"`
-	NumMagnify    int                          `json:"nummagnify,omitempty"`
-	NewTab        int                          `json:"newtab"`
-	NumStartup    int                          `json:"numstartup,omitempty"`
-	NumShutdown   int                          `json:"numshutdown,omitempty"`
-	NumPanics     int                          `json:"numpanics,omitempty"`
-	NumAIReqs     int                          `json:"numaireqs,omitempty"`
-	SetTabTheme   int                          `json:"settabtheme,omitempty"`
-	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int               `json:"renderers,omitempty"`
-	Blocks        map[string]int               `json:"blocks,omitempty"`
-	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
-	Conn          map[string]int               `json:"conn,omitempty"`
+	ActiveMinutes       int                          `json:"activeminutes"`
+	FgMinutes           int                          `json:"fgminutes"`
+	OpenMinutes         int                          `json:"openminutes"`
+	WaveAIActiveMinutes int                          `json:"waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes     int                          `json:"waveaifgminutes,omitempty"`
+	NumTabs             int                          `json:"numtabs"`
+	NumBlocks           int                          `json:"numblocks,omitempty"`
+	NumWindows          int                          `json:"numwindows,omitempty"`
+	NumWS               int                          `json:"numws,omitempty"`
+	NumWSNamed          int                          `json:"numwsnamed,omitempty"`
+	NumSSHConn          int                          `json:"numsshconn,omitempty"`
+	NumWSLConn          int                          `json:"numwslconn,omitempty"`
+	NumMagnify          int                          `json:"nummagnify,omitempty"`
+	NewTab              int                          `json:"newtab"`
+	NumStartup          int                          `json:"numstartup,omitempty"`
+	NumShutdown         int                          `json:"numshutdown,omitempty"`
+	NumPanics           int                          `json:"numpanics,omitempty"`
+	NumAIReqs           int                          `json:"numaireqs,omitempty"`
+	SetTabTheme         int                          `json:"settabtheme,omitempty"`
+	Displays            []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
+	Renderers           map[string]int               `json:"renderers,omitempty"`
+	Blocks              map[string]int               `json:"blocks,omitempty"`
+	WshCmds             map[string]int               `json:"wshcmds,omitempty"`
+	Conn                map[string]int               `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -149,12 +152,21 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.ActiveMinutes += newActivity.ActiveMinutes
 	curActivity.FgMinutes += newActivity.FgMinutes
 	curActivity.OpenMinutes += newActivity.OpenMinutes
+	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
+	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
+	curActivity.TermCommandsRun += newActivity.TermCommandsRun
+	curActivity.TermCommandsRemote += newActivity.TermCommandsRemote
+	curActivity.TermCommandsDurable += newActivity.TermCommandsDurable
+	curActivity.TermCommandsWsl += newActivity.TermCommandsWsl
+	if newActivity.AppFirstDay {
+		curActivity.AppFirstDay = true
+	}
 }
 
 // ignores the timestamp in tevent, and uses the current time
 func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	eventTs := time.Now()
-	// compute to hour boundary, and round up to next hour
+	// compute to 1-hour boundary, and round up to next 1-hour boundary
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
 
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
@@ -180,6 +192,44 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			query := `INSERT INTO db_tevent (uuid, ts, tslocal, event, props) VALUES (?, ?, ?, ?, ?)`
 			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
 			tx.Exec(query, uuid.New().String(), eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
+		}
+		return nil
+	})
+}
+
+// aggregates wsh:run events per (cmd, haderror) key within the current 1-hour bucket
+func updateWshRunTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
+	eventTs := time.Now().Truncate(time.Hour).Add(time.Hour)
+	incomingCount := tevent.Props.WshCount
+	if incomingCount <= 0 {
+		incomingCount = 1
+	}
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		uuidStr := tx.GetString(
+			`SELECT uuid FROM db_tevent WHERE ts = ? AND event = ? AND json_extract(props, '$."wsh:cmd"') IS ?`,
+			eventTs.UnixMilli(), WshRunEventName, tevent.Props.WshCmd,
+		)
+		if uuidStr != "" {
+			var curProps telemetrydata.TEventProps
+			rawProps := tx.GetString(`SELECT props FROM db_tevent WHERE uuid = ?`, uuidStr)
+			if rawProps != "" {
+				if err := json.Unmarshal([]byte(rawProps), &curProps); err != nil {
+					log.Printf("error unmarshalling wsh:run props: %v\n", err)
+				}
+			}
+			curCount := curProps.WshCount
+			if curCount <= 0 {
+				curCount = 1
+			}
+			curProps.WshCount = curCount + incomingCount
+			curProps.WshErrorCount += tevent.Props.WshErrorCount
+			tx.Exec(`UPDATE db_tevent SET props = ? WHERE uuid = ?`, dbutil.QuickJson(curProps), uuidStr)
+		} else {
+			newProps := tevent.Props
+			newProps.WshCount = incomingCount
+			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
+			tx.Exec(`INSERT INTO db_tevent (uuid, ts, tslocal, event, props) VALUES (?, ?, ?, ?, ?)`,
+				uuid.New().String(), eventTs.UnixMilli(), tsLocal, WshRunEventName, dbutil.QuickJson(newProps))
 		}
 		return nil
 	})
@@ -233,23 +283,35 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	}
 	tevent.EnsureTimestamps()
 
-	// Set AppFirstDay if within first day of TOS agreement
+	// Set AppFirstDay if on same calendar day as TOS agreement
 	tosAgreedTs := GetTosAgreedTs()
-	if tosAgreedTs == 0 || (tosAgreedTs != 0 && time.Now().UnixMilli()-tosAgreedTs <= int64(24*60*60*1000)) {
+	if tosAgreedTs == 0 {
 		tevent.Props.AppFirstDay = true
+	} else {
+		tosYear, tosMonth, tosDay := time.UnixMilli(tosAgreedTs).Date()
+		nowYear, nowMonth, nowDay := time.Now().Date()
+		if tosYear == nowYear && tosMonth == nowMonth && tosDay == nowDay {
+			tevent.Props.AppFirstDay = true
+		}
 	}
 
 	if tevent.Event == ActivityEventName {
 		return updateActivityTEvent(ctx, tevent)
 	}
+	if tevent.Event == WshRunEventName {
+		return updateWshRunTEvent(ctx, tevent)
+	}
 	return insertTEvent(ctx, tevent)
 }
 
 func CleanOldTEvents(ctx context.Context) error {
+	daysToKeep := 7
+	if !IsTelemetryEnabled() {
+		daysToKeep = 1
+	}
+	olderThan := time.Now().AddDate(0, 0, -daysToKeep).UnixMilli()
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		// delete events older than 28 days
 		query := `DELETE FROM db_tevent WHERE ts < ?`
-		olderThan := time.Now().AddDate(0, 0, -28).UnixMilli()
 		tx.Exec(query, olderThan)
 		return nil
 	})
@@ -301,6 +363,8 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		tdata.FgMinutes += update.FgMinutes
 		tdata.ActiveMinutes += update.ActiveMinutes
 		tdata.OpenMinutes += update.OpenMinutes
+		tdata.WaveAIFgMinutes += update.WaveAIFgMinutes
+		tdata.WaveAIActiveMinutes += update.WaveAIActiveMinutes
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown

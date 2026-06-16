@@ -9,14 +9,12 @@ import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
 import {
     convertVDomId,
     getTextChildren,
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
-import "./vdom.scss";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -476,10 +474,6 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): VDomModel {
-    return new VDomModel(blockId, nodeModel);
-}
-
 type VDomViewProps = {
     model: VDomModel;
     blockId: string;
@@ -506,10 +500,10 @@ function VDomView({ blockId, model }: VDomViewProps) {
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
+        <div className={clsx("overflow-auto w-full min-h-full", vdomClass)} ref={viewRef}>
             {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }
 
-export { makeVDomModel, VDomView };
+export { VDomView };

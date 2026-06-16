@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -41,6 +41,7 @@ const (
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"
 	MetaKey_CmdLogin                         = "cmd:login"
+	MetaKey_CmdPersistent                    = "cmd:persistent"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
 	MetaKey_CmdRunOnce                       = "cmd:runonce"
@@ -73,6 +74,9 @@ const (
 	MetaKey_AiMaxTokens                      = "ai:maxtokens"
 	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
 
+	MetaKey_AiFileDiffChatId                 = "aifilediff:chatid"
+	MetaKey_AiFileDiffToolCallId             = "aifilediff:toolcallid"
+
 	MetaKey_EditorClear                      = "editor:*"
 	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
 	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"
@@ -85,12 +89,24 @@ const (
 
 	MetaKey_SysinfoType                      = "sysinfo:type"
 
+	MetaKey_TabFlagColor                     = "tab:flagcolor"
+	MetaKey_TabBackground                    = "tab:background"
+
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"
 	MetaKey_BgBlendMode                      = "bg:blendmode"
 	MetaKey_BgBorderColor                    = "bg:bordercolor"
 	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
+
+	MetaKey_LayoutVTabBarWidth               = "layout:vtabbarwidth"
+	MetaKey_LayoutWidgetsVisible             = "layout:widgetsvisible"
+
+	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
+	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
+	MetaKey_WaveAiModel                      = "waveai:model"
+	MetaKey_WaveAiChatId                     = "waveai:chatid"
+	MetaKey_WaveAiWidgetContext              = "waveai:widgetcontext"
 
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"
@@ -105,20 +121,38 @@ const (
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
+	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
+	MetaKey_TermCursor                       = "term:cursor"
+	MetaKey_TermCursorBlink                  = "term:cursorblink"
 	MetaKey_TermConnDebug                    = "term:conndebug"
+	MetaKey_TermBellSound                    = "term:bellsound"
+	MetaKey_TermBellIndicator                = "term:bellindicator"
+	MetaKey_TermOsc52                        = "term:osc52"
+	MetaKey_TermDurable                      = "term:durable"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"
 	MetaKey_WebPartition                     = "web:partition"
+	MetaKey_WebUserAgentType                 = "web:useragenttype"
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
+
+	MetaKey_TsunamiClear                     = "tsunami:*"
+	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
+	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
+	MetaKey_TsunamiAppId                     = "tsunami:appid"
+	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
+	MetaKey_TsunamiEnv                       = "tsunami:env"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"
 	MetaKey_VDomCorrelationId                = "vdom:correlationid"
 	MetaKey_VDomRoute                        = "vdom:route"
 	MetaKey_VDomPersist                      = "vdom:persist"
+
+	MetaKey_OnboardingGithubStar             = "onboarding:githubstar"
+	MetaKey_OnboardingLastVersion            = "onboarding:lastversion"
 
 	MetaKey_Count                            = "count"
 )
