@@ -315,6 +315,14 @@ declare global {
         blockdef: BlockDef;
     };
 
+    // wshrpc.CommandCreateTabData
+    type CommandCreateTabData = {
+        workspaceid?: string;
+        tabname?: string;
+        activatetab?: boolean;
+        meta?: {[key: string]: string};
+    };
+
     // wshrpc.CommandDebugTermData
     type CommandDebugTermData = {
         blockid: string;
