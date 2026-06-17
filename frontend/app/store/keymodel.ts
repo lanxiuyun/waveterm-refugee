@@ -423,6 +423,9 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     if (globalKeybindingsDisabled) {
         return false;
     }
+    if (waveEvent.isComposing) {
+        return false;
+    }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
         return false;

@@ -700,7 +700,9 @@ export class TermViewModel implements ViewModel {
         if (this.shouldDeferImeSpaceToComposition(event)) {
             return false;
         }
-
+        if (event.isComposing || event.keyCode == 229) {
+            return true;
+        }
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
             return true;
