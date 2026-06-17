@@ -13,7 +13,7 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { buildTabBarContextMenu, buildTabContextMenu } from "./tabcontextmenu";
-import { isTabLocked } from "./tablock";
+import { isTabLocked, showTabLockedNotification } from "./tablock";
 import { UpdateStatusBanner } from "./updatebanner";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
@@ -380,6 +380,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                             onSelect={() => env.electron.setActiveTab(tabId)}
                             onClose={() => {
                                 if (isTabLocked(tabId)) {
+                                    showTabLockedNotification();
                                     return;
                                 }
                                 fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false));

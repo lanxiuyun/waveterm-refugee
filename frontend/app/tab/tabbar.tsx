@@ -13,7 +13,7 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
-import { isTabLocked } from "./tablock";
+import { isTabLocked, showTabLockedNotification } from "./tablock";
 import "./tabbar.scss";
 import { TabBarEnv } from "./tabbarenv";
 import { UpdateStatusBanner } from "./updatebanner";
@@ -544,6 +544,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         if (isTabLocked(tabId)) {
+            showTabLockedNotification();
             return;
         }
         env.electron

@@ -21,7 +21,7 @@ import {
     WOS,
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
-import { isTabLocked } from "@/app/tab/tablock";
+import { isTabLocked, showTabLockedNotification } from "@/app/tab/tablock";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -134,6 +134,7 @@ function simpleCloseStaticTab() {
     const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
     if (isTabLocked(tabId)) {
+        showTabLockedNotification();
         return;
     }
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
