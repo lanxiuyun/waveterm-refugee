@@ -713,6 +713,11 @@ declare global {
         lastupdated: number;
     };
 
+    // wshrpc.CommandTermListenCheckPortData
+    type CommandTermListenCheckPortData = {
+        port: number;
+    };
+
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;
@@ -1188,6 +1193,7 @@ declare global {
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
+        "term:tsunamiblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
@@ -1199,6 +1205,7 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
+        "term:tsunamilocalport"?: number;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1211,6 +1218,8 @@ declare global {
         "tsunami:appid"?: string;
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
+        "tsunami:url"?: string;
+        "tsunami:parentblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -1432,6 +1441,7 @@ declare global {
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
+        "term:allowtermlisten"?: boolean;
         "term:durable"?: boolean;
         "term:showsplitbuttons"?: boolean;
         "term:trimtrailingwhitespace"?: boolean;
@@ -1691,6 +1701,11 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
+    };
+
+    // wshrpc.TermListenDownData
+    type TermListenDownData = {
+        port: number;
     };
 
     // waveobj.TermSize
