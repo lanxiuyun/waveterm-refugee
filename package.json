@@ -4,13 +4,13 @@
         "name": "Command Line Inc",
         "email": "info@commandline.dev"
     },
-    "productName": "Wave Dev",
+    "productName": "Wave",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.14.5",
+    "version": "0.14.6",
     "homepage": "https://waveterm.dev",
     "build": {
-        "appId": "dev.commandline.waveterm.custom"
+        "appId": "dev.commandline.waveterm"
     },
     "private": true,
     "main": "./dist/main/index.js",
@@ -44,7 +44,7 @@
         "@types/throttle-debounce": "^5",
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "4.2.3",
-        "@vitest/coverage-istanbul": "^3.0.9",
+        "@vitest/coverage-istanbul": "^4.1.8",
         "electron": "^41.1.0",
         "electron-builder": "^26.8",
         "electron-vite": "^5.0",
@@ -65,7 +65,7 @@
         "vite-plugin-image-optimizer": "^2.0.3",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^5.1.4",
-        "vitest": "^3.0.9"
+        "vitest": "^4.1.8"
     },
     "dependencies": {
         "@ai-sdk/react": "^2.0.104",
@@ -96,7 +96,7 @@
         "html-to-image": "^1.11.13",
         "immer": "^10.1.1",
         "jotai": "2.9.3",
-        "mermaid": "^11.12.3",
+        "mermaid": "^11.15.0",
         "monaco-editor": "^0.55.1",
         "monaco-yaml": "^5.4.0",
         "overlayscrollbars": "^2.14.0",
@@ -130,9 +130,9 @@
         "throttle-debounce": "^5.0.2",
         "unist-util-visit": "^5.1.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "uuid": "^13.0.0",
+        "uuid": "^14.0.0",
         "winston": "^3.19.0",
-        "ws": "^8.19.0",
+        "ws": "^8.21.0",
         "yaml": "^2.8.3"
     },
     "packageManager": "npm@10.9.2",

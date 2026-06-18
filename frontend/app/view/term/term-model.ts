@@ -1,10 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { showAlert, showErrorAlert } from "@/app/modals/alertmodal";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
-import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -40,7 +40,7 @@ import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import { computeTheme, DefaultTermTheme, trimTerminalSelection } from "./termutil";
+import { computeTheme, DefaultTermTheme, isLikelyOnSameHost, trimTerminalSelection } from "./termutil";
 import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
@@ -697,6 +697,12 @@ export class TermViewModel implements ViewModel {
     }
 
     handleTerminalKeydown(event: KeyboardEvent): boolean {
+        if (this.shouldDeferImeSpaceToComposition(event)) {
+            return false;
+        }
+        if (event.isComposing || event.keyCode == 229) {
+            return true;
+        }
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
             return true;
@@ -777,6 +783,14 @@ export class TermViewModel implements ViewModel {
             return false;
         }
         return true;
+    }
+
+    shouldDeferImeSpaceToComposition(event: KeyboardEvent): boolean {
+        // On Windows Korean IME, xterm's keydown path can finalize composition before
+        // Chromium commits the last syllable, causing space to be sent before it.
+        return (
+            isWindows() && event.isComposing && event.key === " " && !event.ctrlKey && !event.altKey && !event.metaKey
+        );
     }
 
     setTerminalTheme(themeName: string) {
@@ -958,9 +972,9 @@ export class TermViewModel implements ViewModel {
         });
         fullMenu.push({ type: "separator" });
 
-        const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
+        const lastCommand = globalStore.get(this.termRef?.current?.lastCommandAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
-        const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
+        const canShowFileBrowser = cwd != null && isLikelyOnSameHost(lastCommand);
 
         if (canShowFileBrowser) {
             fullMenu.push({
@@ -998,15 +1012,11 @@ export class TermViewModel implements ViewModel {
                             } catch (error) {
                                 console.error("Failed to save scrollback:", error);
                                 const errorMessage = error?.message || "An unknown error occurred";
-                                modalsModel.pushModal("MessageModal", {
-                                    children: `Failed to save session scrollback: ${errorMessage}`,
-                                });
+                                showErrorAlert(`Failed to save session scrollback: ${errorMessage}`);
                             }
                         });
                     } else {
-                        modalsModel.pushModal("MessageModal", {
-                            children: "No scrollback content to save.",
-                        });
+                        showAlert({ title: "Save Session", message: "No scrollback content to save." });
                     }
                 }
             },
