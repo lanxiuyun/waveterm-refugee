@@ -1,0 +1,36 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================
+; Wave Terminal - Windows Right-Click Context Menu
+; ============================================================
+; Adds "Open in Wave Terminal" to:
+;   1. Right-click on empty space in a folder (Directory\Background)
+;   2. Right-click on a folder itself (Directory)
+; ============================================================
+; IMPORTANT: Replace "C:\\Path\\To\\Wave.exe" below with the actual
+;            path to your Wave.exe installation before importing.
+; ============================================================
+
+; --- Folder background (right-click empty space) ---
+[HKEY_CLASSES_ROOT\Directory\Background\shell\WaveTerminal]
+@="Open in Wave Terminal"
+"Icon"="C:\\Path\\To\\Wave.exe"
+
+[HKEY_CLASSES_ROOT\Directory\Background\shell\WaveTerminal\command]
+@="\"C:\\Path\\To\\Wave.exe\" \"%V\""
+
+; --- Folder itself (right-click on folder) ---
+[HKEY_CLASSES_ROOT\Directory\shell\WaveTerminal]
+@="Open in Wave Terminal"
+"Icon"="C:\\Path\\To\\Wave.exe"
+
+[HKEY_CLASSES_ROOT\Directory\shell\WaveTerminal\command]
+@="\"C:\\Path\\To\\Wave.exe\" \"%1\""
+
+; --- Drive root (right-click on drive in This PC) ---
+[HKEY_CLASSES_ROOT\Drive\shell\WaveTerminal]
+@="Open in Wave Terminal"
+"Icon"="C:\\Path\\To\\Wave.exe"
+
+[HKEY_CLASSES_ROOT\Drive\shell\WaveTerminal\command]
+@="\"C:\\Path\\To\\Wave.exe\" \"%1\""
