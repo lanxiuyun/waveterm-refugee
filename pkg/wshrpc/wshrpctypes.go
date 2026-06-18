@@ -99,6 +99,8 @@ type WshRpcInterface interface {
 	CreateTabCommand(ctx context.Context, data CommandCreateTabData) (string, error)
 	FocusTabCommand(ctx context.Context, tabId string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
+	WriteNoteCommand(ctx context.Context, data CommandWriteNoteData) error
+	GetNoteCommand(ctx context.Context) (NoteData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -349,7 +351,6 @@ type CommandEventReadHistoryData struct {
 	Scope    string `json:"scope"`
 	MaxItems int    `json:"maxitems"`
 }
-
 
 type CpuDataRequest struct {
 	Id    string `json:"id"`
@@ -928,6 +929,26 @@ type CommandRemoteProcessListData struct {
 	LastPidOrder bool `json:"lastpidorder,omitempty"`
 	// KeepAlive, when set, overrides all other fields and simply keeps the backend cache alive (returns nil).
 	KeepAlive bool `json:"keepalive,omitempty"`
+}
+
+type CommandWriteNoteData struct {
+	Content    string `json:"content"`
+	SourceOref string `json:"sourceoref"`
+}
+
+type NoteData struct {
+	Content  string `json:"content"`
+	ReadOnly bool   `json:"readonly,omitempty"`
+	FilePath string `json:"filepath,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+type NotesUpdatedData struct {
+	Content    string `json:"content"`
+	SourceOref string `json:"sourceoref"`
+	ReadOnly   bool   `json:"readonly,omitempty"`
+	FilePath   string `json:"filepath,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {
