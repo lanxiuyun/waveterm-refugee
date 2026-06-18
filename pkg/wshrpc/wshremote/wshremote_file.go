@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -216,7 +217,6 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			data.Opts = &wshrpc.FileListOpts{}
 		}
 		innerFilesEntries := []os.DirEntry{}
-		seen := 0
 		if data.Opts.Limit == 0 {
 			data.Opts.Limit = wshrpc.MaxDirSize
 		}
@@ -225,16 +225,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("recursive directory listings are not supported"))
 				return
 			}
-			fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
-				defer func() {
-					seen++
-				}()
-				if seen < data.Opts.Offset {
-					return nil
-				}
-				if seen >= data.Opts.Offset+data.Opts.Limit {
-					return io.EOF
-				}
+			err = fs.WalkDir(os.DirFS(path), ".", func(walkPath string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -244,12 +235,37 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 				innerFilesEntries = append(innerFilesEntries, d)
 				return nil
 			})
+			if err != nil {
+				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot walk dir %q: %w", path, err))
+				return
+			}
 		} else {
 			innerFilesEntries, err = os.ReadDir(path)
 			if err != nil {
 				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot open dir %q: %w", path, err))
 				return
 			}
+		}
+		sort.Slice(innerFilesEntries, func(i, j int) bool {
+			iInfo, iErr := innerFilesEntries[i].Info()
+			jInfo, jErr := innerFilesEntries[j].Info()
+			if iErr != nil {
+				return false
+			}
+			if jErr != nil {
+				return true
+			}
+			return iInfo.ModTime().After(jInfo.ModTime())
+		})
+		if data.Opts.Offset > 0 {
+			if data.Opts.Offset >= len(innerFilesEntries) {
+				innerFilesEntries = nil
+			} else {
+				innerFilesEntries = innerFilesEntries[data.Opts.Offset:]
+			}
+		}
+		if data.Opts.Limit > 0 && len(innerFilesEntries) > data.Opts.Limit {
+			innerFilesEntries = innerFilesEntries[:data.Opts.Limit]
 		}
 		var fileInfoArr []*wshrpc.FileInfo
 		for _, innerFileEntry := range innerFilesEntries {
