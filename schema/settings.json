@@ -171,6 +171,9 @@
         "term:showsplitbuttons": {
           "type": "boolean"
         },
+        "term:trimtrailingwhitespace": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },
@@ -347,6 +350,9 @@
           "type": "string"
         },
         "tsunami:gopath": {
+          "type": "string"
+        },
+        "notes:path": {
           "type": "string"
         }
       },

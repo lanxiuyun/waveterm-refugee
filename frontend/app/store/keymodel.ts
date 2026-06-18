@@ -21,6 +21,7 @@ import {
     WOS,
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
+import { isTabLocked, showTabLockedNotification } from "@/app/tab/tablock";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -128,9 +129,14 @@ function getStaticTabBlockCount(): number {
     return tabData?.blockids?.length ?? 0;
 }
 
+/** Closes the active static tab via the keyboard shortcut, unless the tab is locked. */
 function simpleCloseStaticTab() {
     const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
+    if (isTabLocked(tabId)) {
+        showTabLockedNotification();
+        return;
+    }
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
     getApi()
         .closeTab(workspaceId, tabId, confirmClose)
@@ -417,6 +423,9 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     if (globalKeybindingsDisabled) {
         return false;
     }
+    if (waveEvent.isComposing) {
+        return false;
+    }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
         return false;
@@ -549,7 +558,12 @@ function registerGlobalKeys() {
         const layoutModel = getLayoutModelForStaticTab();
         const focusedNode = globalStore.get(layoutModel.focusedNode);
         if (focusedNode != null) {
-            layoutModel.magnifyNodeToggle(focusedNode.id);
+            const ephemeralNode = globalStore.get(layoutModel.ephemeralNode);
+            if (ephemeralNode?.id === focusedNode.id) {
+                layoutModel.addEphemeralNodeToLayout();
+            } else {
+                layoutModel.magnifyNodeToggle(focusedNode.id);
+            }
         }
         return true;
     });
@@ -650,6 +664,10 @@ function registerGlobalKeys() {
             return true;
         }
     });
+    globalKeyMap.set("Cmd:,", () => {
+        createBlock({ meta: { view: "waveconfig" } }, false, true);
+        return true;
+    });
     globalKeyMap.set("Ctrl:Shift:i", () => {
         const tabModel = getActiveTabModel();
         if (tabModel == null) {
@@ -732,6 +750,17 @@ function registerGlobalKeys() {
         }
         if (deactivateSearch()) {
             return true;
+        }
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null) {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+            const blockData = globalStore.get(blockAtom);
+            if (blockData?.meta?.view === "waveconfig" || blockData?.meta?.view === "tips") {
+                fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
+                return true;
+            }
         }
         return false;
     });

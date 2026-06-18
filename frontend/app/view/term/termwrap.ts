@@ -42,6 +42,7 @@ import {
     extractAllClipboardData,
     normalizeCursorStyle,
     quoteForPosixShell,
+    trimTerminalSelection,
 } from "./termutil";
 
 const dlog = debug("wave:termwrap");
@@ -51,6 +52,7 @@ const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 const MaxRepaintTransactionMs = 2000;
+const MaxCompositionSuffixLength = 4;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -109,6 +111,13 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+
+    // IME composition ordering
+    compositionActive: boolean = false;
+    compositionRecentlyEndedUntil: number = 0;
+    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> | null } | null = null;
+    disposed: boolean = false;
+    pendingImeDedup: string[] = [];
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -271,6 +280,12 @@ export class TermWrap {
             })
         );
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (e.isComposing || e.keyCode == 229) {
+                return true;
+            }
+            if (this.shouldBypassWaveKeydownForComposition(e)) {
+                return true;
+            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
@@ -281,6 +296,7 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+        this.registerCompositionEventHandlers();
 
         const dragoverHandler = (e: DragEvent) => {
             e.preventDefault();
@@ -380,7 +396,29 @@ export class TermWrap {
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
+        const trimTrailingWhitespaceAtom = getSettingsKeyAtom("term:trimtrailingwhitespace");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
+        const ta = this.terminal.textarea;
+        if (ta) {
+            const onCompEnd = (e: CompositionEvent) => {
+                const compHelper = (this.terminal as any)._core?._inputHandler?._compositionHelper;
+                if (compHelper && "_isSendingComposition" in compHelper) {
+                    compHelper._isSendingComposition = false;
+                }
+                if (!e.data) {
+                    return;
+                }
+                this.pendingImeDedup.push(e.data);
+                this.sendDataHandler?.(e.data);
+                this.multiInputCallback?.(e.data);
+            };
+            ta.addEventListener("compositionend", onCompEnd);
+            this.toDispose.push({
+                dispose: () => {
+                    ta.removeEventListener("compositionend", onCompEnd);
+                },
+            });
+        }
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
@@ -393,8 +431,11 @@ export class TermWrap {
                     if (active != null && active.closest(".search-container") != null) {
                         return;
                     }
-                    const selectedText = this.terminal.getSelection();
+                    let selectedText = this.terminal.getSelection();
                     if (selectedText.length > 0) {
+                        if (globalStore.get(trimTrailingWhitespaceAtom) !== false) {
+                            selectedText = trimTerminalSelection(selectedText);
+                        }
                         navigator.clipboard.writeText(selectedText);
                     }
                 })
@@ -437,6 +478,7 @@ export class TermWrap {
     }
 
     dispose() {
+        this.disposed = true;
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
@@ -445,6 +487,7 @@ export class TermWrap {
             }
         });
         this.promptMarkers = [];
+        this.cancelPendingCompositionSuffix();
         this.webglContextLossDisposable?.dispose();
         this.webglContextLossDisposable = null;
         this.terminal.dispose();
@@ -458,13 +501,171 @@ export class TermWrap {
         this.mainFileSubject.release();
     }
 
+    registerCompositionEventHandlers() {
+        const textarea = this.terminal.textarea;
+        if (textarea == null) {
+            return;
+        }
+        const compositionStartHandler = () => {
+            this.compositionActive = true;
+            this.compositionRecentlyEndedUntil = 0;
+            this.flushPendingCompositionSuffix();
+        };
+        const compositionEndHandler = () => {
+            this.compositionActive = false;
+            this.compositionRecentlyEndedUntil = Date.now() + 75;
+            this.schedulePendingCompositionSuffixFlush();
+        };
+        textarea.addEventListener("compositionstart", compositionStartHandler);
+        textarea.addEventListener("compositionend", compositionEndHandler);
+        this.toDispose.push({
+            dispose: () => {
+                textarea.removeEventListener("compositionstart", compositionStartHandler);
+                textarea.removeEventListener("compositionend", compositionEndHandler);
+                this.cancelPendingCompositionSuffix();
+            },
+        });
+    }
+
+    shouldBypassWaveKeydownForComposition(event: KeyboardEvent): boolean {
+        if (this.compositionActive) {
+            return true;
+        }
+        if (Date.now() > this.compositionRecentlyEndedUntil) {
+            return false;
+        }
+        return !event.ctrlKey && !event.metaKey && !event.altKey && this.isCompositionSuffixData(event.key);
+    }
+
+    sendTermData(data: string) {
+        this.sendDataHandler?.(data);
+        this.multiInputCallback?.(data);
+    }
+
+    flushPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        const pendingData = this.pendingCompositionSuffix.data;
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
+        this.pendingCompositionSuffix = null;
+        if (!this.loaded || this.disposed) {
+            return;
+        }
+        this.sendTermData(pendingData);
+    }
+
+    cancelPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
+        this.pendingCompositionSuffix = null;
+    }
+
+    schedulePendingCompositionSuffixFlush() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+            this.pendingCompositionSuffix.timeout = null;
+        }
+        if (this.compositionActive) {
+            return;
+        }
+        this.pendingCompositionSuffix.timeout = setTimeout(() => {
+            this.flushPendingCompositionSuffix();
+        }, 30);
+    }
+
+    isLikelyCompositionText(data: string): boolean {
+        if (data.length === 0) {
+            return false;
+        }
+        let hasNonAscii = false;
+        for (const ch of data) {
+            const codePoint = ch.codePointAt(0);
+            if (codePoint == null || codePoint <= 0x1f || codePoint === 0x7f) {
+                return false;
+            }
+            if (codePoint > 0x7f) {
+                hasNonAscii = true;
+            }
+        }
+        return hasNonAscii;
+    }
+
+    isCompositionSuffixData(data: string): boolean {
+        if (data.length === 0 || data.length > MaxCompositionSuffixLength) {
+            return false;
+        }
+        for (const ch of data) {
+            const codePoint = ch.codePointAt(0);
+            if (codePoint == null || codePoint < 0x20 || codePoint > 0x7e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    shouldDeferCompositionData(data: string): boolean {
+        if (this.compositionActive) {
+            return data === "\r";
+        }
+        if (Date.now() > this.compositionRecentlyEndedUntil) {
+            return false;
+        }
+        return data === "\r" || this.isCompositionSuffixData(data);
+    }
+
     handleTermData(data: string) {
+        const dedupIdx = this.pendingImeDedup.indexOf(data);
+        if (dedupIdx !== -1) {
+            this.pendingImeDedup.splice(dedupIdx, 1);
+            return;
+        }
         if (!this.loaded) {
             return;
         }
 
-        this.sendDataHandler?.(data);
-        this.multiInputCallback?.(data);
+        if (this.pendingCompositionSuffix != null) {
+            if (this.isLikelyCompositionText(data)) {
+                const pendingData = this.pendingCompositionSuffix.data;
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                }
+                this.pendingCompositionSuffix = null;
+                this.sendTermData(data);
+                this.sendTermData(pendingData);
+                return;
+            }
+            if (this.shouldDeferCompositionData(data)) {
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                    this.pendingCompositionSuffix.timeout = null;
+                }
+                this.pendingCompositionSuffix.data += data;
+                this.schedulePendingCompositionSuffixFlush();
+                return;
+            }
+            this.flushPendingCompositionSuffix();
+        }
+
+        if (this.shouldDeferCompositionData(data)) {
+            this.pendingCompositionSuffix = {
+                data,
+                timeout: null,
+            };
+            this.schedulePendingCompositionSuffixFlush();
+            return;
+        }
+
+        this.sendTermData(data);
     }
 
     addFocusListener(focusFn: () => void) {

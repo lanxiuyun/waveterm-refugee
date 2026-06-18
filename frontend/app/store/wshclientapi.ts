@@ -192,6 +192,12 @@ export class RpcApiType {
         return client.wshRpcCall("createsubblock", data, opts);
     }
 
+    // command "createtab" [call]
+    CreateTabCommand(client: WshClient, data: CommandCreateTabData, opts?: RpcOpts): Promise<string> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "createtab", data, opts);
+        return client.wshRpcCall("createtab", data, opts);
+    }
+
     // command "debugterm" [call]
     DebugTermCommand(client: WshClient, data: CommandDebugTermData, opts?: RpcOpts): Promise<CommandDebugTermRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "debugterm", data, opts);
@@ -390,6 +396,12 @@ export class RpcApiType {
         return client.wshRpcCall("findgitbash", data, opts);
     }
 
+    // command "focustab" [call]
+    FocusTabCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "focustab", data, opts);
+        return client.wshRpcCall("focustab", data, opts);
+    }
+
     // command "focuswindow" [call]
     FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "focuswindow", data, opts);
@@ -442,6 +454,12 @@ export class RpcApiType {
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getmeta", data, opts);
         return client.wshRpcCall("getmeta", data, opts);
+    }
+
+    // command "getnote" [call]
+    GetNoteCommand(client: WshClient, opts?: RpcOpts): Promise<NoteData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getnote", null, opts);
+        return client.wshRpcCall("getnote", null, opts);
     }
 
     // command "getrtinfo" [call]
@@ -924,12 +942,6 @@ export class RpcApiType {
         return client.wshRpcStream("streamtest", null, opts);
     }
 
-    // command "streamwaveai" [responsestream]
-	StreamWaveAiCommand(client: WshClient, data: WaveAIStreamRequest, opts?: RpcOpts): AsyncGenerator<WaveAIPacketType, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "streamwaveai", data, opts);
-        return client.wshRpcStream("streamwaveai", data, opts);
-    }
-
     // command "termgetscrollbacklines" [call]
     TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "termgetscrollbacklines", data, opts);
@@ -1054,6 +1066,12 @@ export class RpcApiType {
     WriteAppSecretBindingsCommand(client: WshClient, data: CommandWriteAppSecretBindingsData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writeappsecretbindings", data, opts);
         return client.wshRpcCall("writeappsecretbindings", data, opts);
+    }
+
+    // command "writenote" [call]
+    WriteNoteCommand(client: WshClient, data: CommandWriteNoteData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writenote", data, opts);
+        return client.wshRpcCall("writenote", data, opts);
     }
 
     // command "writetempfile" [call]

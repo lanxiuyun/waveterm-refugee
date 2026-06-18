@@ -3,7 +3,7 @@
     "exclude": ["node_modules"],
     "compilerOptions": {
         "target": "es6",
-        "module": "es2020",
+        "module": "es2022",
         "jsx": "preserve",
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -13,7 +13,6 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "experimentalDecorators": true,
-        "downlevelIteration": true,
         "baseUrl": "./",
         "paths": {
             "@/app/*": ["frontend/app/*"],

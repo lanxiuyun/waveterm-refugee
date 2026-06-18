@@ -26,6 +26,8 @@ import { UpgradeOnboardingModal_v0_14_0_Content } from "./onboarding-upgrade-v01
 import { UpgradeOnboardingModal_v0_14_1_Content } from "./onboarding-upgrade-v0141";
 import { UpgradeOnboardingModal_v0_14_2_Content } from "./onboarding-upgrade-v0142";
 import { UpgradeOnboardingModal_v0_14_4_Content } from "./onboarding-upgrade-v0144";
+import { UpgradeOnboardingModal_v0_14_5_Content } from "./onboarding-upgrade-v0145";
+import { UpgradeOnboardingModal_v0_14_6_Content } from "./onboarding-upgrade-v0146";
 
 interface VersionConfig {
     version: string;
@@ -63,10 +65,7 @@ export function UpgradeOnboardingFooter({
                 <div className="flex-1 flex justify-start">
                     {hasPrev && (
                         <div className="text-sm text-secondary">
-                            <button
-                                onClick={onPrev}
-                                className="cursor-pointer hover:text-foreground transition-colors"
-                            >
+                            <button onClick={onPrev} className="cursor-pointer hover:text-foreground transition-colors">
                                 &lt; {prevText}
                             </button>
                         </div>
@@ -80,10 +79,7 @@ export function UpgradeOnboardingFooter({
                 <div className="flex-1 flex justify-end">
                     {hasNext && (
                         <div className="text-sm text-secondary">
-                            <button
-                                onClick={onNext}
-                                className="cursor-pointer hover:text-foreground transition-colors"
-                            >
+                            <button onClick={onNext} className="cursor-pointer hover:text-foreground transition-colors">
                                 {nextText} &gt;
                             </button>
                         </div>
@@ -146,6 +142,18 @@ export const UpgradeOnboardingVersions: VersionConfig[] = [
         version: "v0.14.4",
         content: () => <UpgradeOnboardingModal_v0_14_4_Content />,
         prevText: "Prev (v0.14.3)",
+        nextText: "Next (v0.14.5)",
+    },
+    {
+        version: "v0.14.5",
+        content: () => <UpgradeOnboardingModal_v0_14_5_Content />,
+        prevText: "Prev (v0.14.4)",
+        nextText: "Next (v0.14.6)",
+    },
+    {
+        version: "v0.14.6",
+        content: () => <UpgradeOnboardingModal_v0_14_6_Content />,
+        prevText: "Prev (v0.14.5)",
     },
 ];
 
@@ -235,10 +243,7 @@ const UpgradeOnboardingPatch = ({ isReleaseNotes = false }: UpgradeOnboardingPat
 
     if (showStarAsk) {
         return (
-            <FlexiModal
-                className="w-[500px] rounded-[10px] !p-[30px] relative overflow-hidden bg-panel"
-                ref={modalRef}
-            >
+            <FlexiModal className="w-[500px] rounded-[10px] !p-[30px] relative overflow-hidden bg-panel" ref={modalRef}>
                 <OnboardingGradientBg />
                 <div className="relative z-10 flex flex-col w-full h-full">
                     <StarAskPage onClose={doClose} page="upgrade" />

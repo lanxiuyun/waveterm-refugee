@@ -5,7 +5,7 @@ import { ClientService, ObjectService, WindowService, WorkspaceService } from "@
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
-import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
+import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen, webContents } from "electron";
 import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { debounce } from "throttle-debounce";
@@ -29,6 +29,7 @@ export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
     isPrimaryStartupWindow?: boolean;
     foregroundWindow?: boolean;
+    cwd?: string;
 };
 
 export const MinWindowWidth = 800;
@@ -299,6 +300,7 @@ export class WaveBrowserWindow extends BaseWindow {
             if (this.isDestroyed()) {
                 return;
             }
+            this.closeAllDevTools();
             console.log("win 'close' handler fired", this.waveWindowId);
             if (getGlobalIsQuitting() || updater?.status == "installing" || getGlobalIsRelaunching()) {
                 return;
@@ -356,6 +358,24 @@ export class WaveBrowserWindow extends BaseWindow {
         });
         waveWindowMap.set(waveWindow.oid, this);
         setTimeout(() => globalEvents.emit("windows-updated"), 50);
+    }
+
+    private closeAllDevTools() {
+        for (const tabView of this.allLoadedTabViews.values()) {
+            if (tabView.webContents?.isDevToolsOpened()) {
+                tabView.webContents.closeDevTools();
+            }
+        }
+        const tabViewIds = new Set(
+            [...this.allLoadedTabViews.values()].map((tv) => tv.webContents?.id).filter((id) => id != null)
+        );
+        for (const wc of webContents.getAllWebContents()) {
+            if (wc.getType() === "webview" && tabViewIds.has(wc.hostWebContents?.id)) {
+                if (wc.isDevToolsOpened()) {
+                    wc.closeDevTools();
+                }
+            }
+        }
     }
 
     private removeAllChildViews() {
@@ -705,6 +725,9 @@ export async function createBrowserWindow(
     if (!waveWindow) {
         console.log("createBrowserWindow: no waveWindow");
         waveWindow = await WindowService.CreateWindow(null, "");
+        if (opts.cwd && waveWindow?.workspaceid) {
+            await ObjectService.UpdateObjectMeta(`workspace:${waveWindow.workspaceid}`, { "cmd:cwd": opts.cwd } as MetaType);
+        }
     }
     let workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
     if (!workspace) {
@@ -828,8 +851,8 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
     });
 });
 
-export async function createNewWaveWindow() {
-    log("createNewWaveWindow");
+export async function createNewWaveWindow(cwd?: string) {
+    log("createNewWaveWindow" + (cwd ? ` cwd=${cwd}` : ""));
     const clientData = await ClientService.GetClientData();
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     let recreatedWindow = false;
@@ -843,6 +866,7 @@ export async function createNewWaveWindow() {
             const win = await createBrowserWindow(existingWindowData, fullConfig, {
                 unamePlatform,
                 isPrimaryStartupWindow: false,
+                cwd,
             });
             if (quakeWindow == null) {
                 quakeWindow = win;
@@ -859,6 +883,7 @@ export async function createNewWaveWindow() {
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, {
         unamePlatform,
         isPrimaryStartupWindow: false,
+        cwd,
     });
     if (quakeWindow == null) {
         quakeWindow = newBrowserWindow;

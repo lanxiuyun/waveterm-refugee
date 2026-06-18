@@ -76,7 +76,20 @@ export function buildTabContextMenu(
                 ),
         })),
     ];
-    menu.push({ label: t("app.flagTab"), type: "submenu", submenu: flagSubmenu }, { type: "separator" });
+    menu.push({ label: t("app.flagTab"), type: "submenu", submenu: flagSubmenu });
+    const isLocked = !!globalStore.get(getOrefMetaKeyAtom(tabORef, "tab:locked"));
+    menu.push(
+        {
+            label: isLocked ? "Unlock Tab" : "Lock Tab",
+            type: "checkbox",
+            checked: isLocked,
+            click: () =>
+                fireAndForget(() =>
+                    env.rpc.SetMetaCommand(TabRpcClient, { oref: tabORef, meta: { "tab:locked": !isLocked } })
+                ),
+        },
+        { type: "separator" }
+    );
     const fullConfig = globalStore.get(env.atoms.fullConfigAtom);
     const backgrounds = fullConfig?.backgrounds ?? {};
     const bgKeys = Object.keys(backgrounds).filter((k) => backgrounds[k] != null);
@@ -118,6 +131,6 @@ export function buildTabContextMenu(
         menu.push({ label: t("app.backgrounds"), type: "submenu", submenu }, { type: "separator" });
     }
     menu.push(...buildTabBarContextMenu(env), { type: "separator" });
-    menu.push({ label: t("app.closeTab"), click: () => onClose(null) });
+    menu.push({ label: t("app.closeTab"), enabled: !isLocked, click: () => onClose(null) });
     return menu;
 }

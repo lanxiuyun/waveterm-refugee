@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/notesmanager"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -43,7 +44,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -114,10 +114,6 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 	return rtn
 }
 
-func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	return waveai.RunAICommand(ctx, request)
-}
-
 func MakePlotData(ctx context.Context, blockId string) error {
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -177,6 +173,97 @@ func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspace
 		return fmt.Errorf("error updating workspace tab ids: %w", err)
 	}
 	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
+// resolveWorkspaceIdFromRpcCtx looks up the workspace id implied by the calling
+// rpc context (via its BlockId). Returns "" if no implicit workspace can be
+// determined (e.g. caller is not associated with a block).
+func resolveWorkspaceIdFromRpcCtx(ctx context.Context) (string, error) {
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return "", nil
+	}
+	rpcCtx := handler.GetRpcContext()
+	if rpcCtx.BlockId == "" {
+		return "", nil
+	}
+	tabId, err := wstore.DBFindTabForBlockId(ctx, rpcCtx.BlockId)
+	if err != nil {
+		return "", fmt.Errorf("error finding tab for caller block: %w", err)
+	}
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		return "", fmt.Errorf("error finding workspace for caller tab: %w", err)
+	}
+	return workspaceId, nil
+}
+
+func (ws *WshServer) CreateTabCommand(ctx context.Context, data wshrpc.CommandCreateTabData) (string, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	workspaceId := data.WorkspaceId
+	if workspaceId == "" {
+		resolved, err := resolveWorkspaceIdFromRpcCtx(ctx)
+		if err != nil {
+			return "", err
+		}
+		if resolved == "" {
+			return "", fmt.Errorf("workspaceid is required (caller has no implicit workspace)")
+		}
+		workspaceId = resolved
+	}
+	tabId, err := wcore.CreateTab(ctx, workspaceId, data.TabName, data.ActivateTab, false)
+	if err != nil {
+		return "", fmt.Errorf("error creating tab: %w", err)
+	}
+	if len(data.Meta) > 0 {
+		tabORef := waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}
+		metaAny := make(waveobj.MetaMapType, len(data.Meta))
+		for k, v := range data.Meta {
+			metaAny[k] = v
+		}
+		if metaErr := wstore.UpdateObjectMeta(ctx, tabORef, metaAny, false); metaErr != nil {
+			log.Printf("CreateTabCommand: tab %s created but meta update failed: %v", tabId, metaErr)
+			// Tab creation succeeded; meta is auxiliary and can be re-applied via wsh setmeta.
+		}
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WshServer:CreateTabCommand:SendUpdateEvents", recover())
+		}()
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	if data.ActivateTab {
+		wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
+	}
+	return tabId, nil
+}
+
+func (ws *WshServer) FocusTabCommand(ctx context.Context, tabId string) error {
+	if tabId == "" {
+		return fmt.Errorf("tabid is required")
+	}
+	ctx = waveobj.ContextWithUpdates(ctx)
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		return fmt.Errorf("error finding workspace for tab %s: %w", tabId, err)
+	}
+	if workspaceId == "" {
+		return fmt.Errorf("tab %s not found in any workspace", tabId)
+	}
+	err = wcore.SetActiveTab(ctx, workspaceId, tabId)
+	if err != nil {
+		return fmt.Errorf("error setting active tab: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WshServer:FocusTabCommand:SendUpdateEvents", recover())
+		}()
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
 	return nil
 }
 
@@ -1334,7 +1421,8 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 			delete(data, key)
 		}
 		if strings.HasSuffix(key, "#error") {
-			props.WshHadError = true
+			props.WshCmd = strings.TrimSuffix(key, "#error")
+			props.WshErrorCount = 1
 		} else {
 			props.WshCmd = key
 		}
@@ -1344,7 +1432,7 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-		Event: "wsh:run",
+		Event: telemetry.WshRunEventName,
 		Props: props,
 	})
 	return nil
@@ -1474,6 +1562,14 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 
 func (ws *WshServer) GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error) {
 	return wcore.GetAllBadges(), nil
+}
+
+func (ws *WshServer) WriteNoteCommand(ctx context.Context, data wshrpc.CommandWriteNoteData) error {
+	return notesmanager.GetNotesManager().WriteNote(ctx, data)
+}
+
+func (ws *WshServer) GetNoteCommand(ctx context.Context) (wshrpc.NoteData, error) {
+	return notesmanager.GetNotesManager().GetNote(ctx)
 }
 
 func (ws *WshServer) GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error) {

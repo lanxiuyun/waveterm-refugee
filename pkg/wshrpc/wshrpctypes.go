@@ -71,7 +71,6 @@ type WshRpcInterface interface {
 	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
 	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
-	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error)
@@ -97,7 +96,11 @@ type WshRpcInterface interface {
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
+	CreateTabCommand(ctx context.Context, data CommandCreateTabData) (string, error)
+	FocusTabCommand(ctx context.Context, tabId string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
+	WriteNoteCommand(ctx context.Context, data CommandWriteNoteData) error
+	GetNoteCommand(ctx context.Context) (NoteData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -299,6 +302,13 @@ type CommandCreateSubBlockData struct {
 	BlockDef      *waveobj.BlockDef `json:"blockdef"`
 }
 
+type CommandCreateTabData struct {
+	WorkspaceId string            `json:"workspaceid,omitempty"`
+	TabName     string            `json:"tabname,omitempty"`
+	ActivateTab bool              `json:"activatetab,omitempty"`
+	Meta        map[string]string `json:"meta,omitempty"`
+}
+
 type CommandControllerResyncData struct {
 	ForceRestart bool                 `json:"forcerestart,omitempty"`
 	TabId        string               `json:"tabid"`
@@ -340,48 +350,6 @@ type CommandEventReadHistoryData struct {
 	Event    string `json:"event"`
 	Scope    string `json:"scope"`
 	MaxItems int    `json:"maxitems"`
-}
-
-type WaveAIStreamRequest struct {
-	ClientId string                    `json:"clientid,omitempty"`
-	Opts     *WaveAIOptsType           `json:"opts"`
-	Prompt   []WaveAIPromptMessageType `json:"prompt"`
-}
-
-type WaveAIPromptMessageType struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Name    string `json:"name,omitempty"`
-}
-
-type WaveAIOptsType struct {
-	Model      string `json:"model"`
-	APIType    string `json:"apitype,omitempty"`
-	APIToken   string `json:"apitoken"`
-	OrgID      string `json:"orgid,omitempty"`
-	APIVersion string `json:"apiversion,omitempty"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	ProxyURL   string `json:"proxyurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	MaxChoices int    `json:"maxchoices,omitempty"`
-	TimeoutMs  int    `json:"timeoutms,omitempty"`
-}
-
-type WaveAIPacketType struct {
-	Type         string           `json:"type"`
-	Model        string           `json:"model,omitempty"`
-	Created      int64            `json:"created,omitempty"`
-	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *WaveAIUsageType `json:"usage,omitempty"`
-	Index        int              `json:"index,omitempty"`
-	Text         string           `json:"text,omitempty"`
-	Error        string           `json:"error,omitempty"`
-}
-
-type WaveAIUsageType struct {
-	PromptTokens     int `json:"prompt_tokens,omitempty"`
-	CompletionTokens int `json:"completion_tokens,omitempty"`
-	TotalTokens      int `json:"total_tokens,omitempty"`
 }
 
 type CpuDataRequest struct {
@@ -961,6 +929,26 @@ type CommandRemoteProcessListData struct {
 	LastPidOrder bool `json:"lastpidorder,omitempty"`
 	// KeepAlive, when set, overrides all other fields and simply keeps the backend cache alive (returns nil).
 	KeepAlive bool `json:"keepalive,omitempty"`
+}
+
+type CommandWriteNoteData struct {
+	Content    string `json:"content"`
+	SourceOref string `json:"sourceoref"`
+}
+
+type NoteData struct {
+	Content  string `json:"content"`
+	ReadOnly bool   `json:"readonly,omitempty"`
+	FilePath string `json:"filepath,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+type NotesUpdatedData struct {
+	Content    string `json:"content"`
+	SourceOref string `json:"sourceoref"`
+	ReadOnly   bool   `json:"readonly,omitempty"`
+	FilePath   string `json:"filepath,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {

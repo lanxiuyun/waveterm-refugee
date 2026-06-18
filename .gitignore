@@ -2,6 +2,7 @@
 frontend/dist
 dist/
 dist-dev/
+.waveterm-dev/
 frontend/node_modules
 node_modules/
 frontend/bindings
@@ -21,6 +22,7 @@ aiplans/
 manifests/
 .env
 out
+.kilocode/package-lock.json
 
 # Yarn Modern
 .pnp.*

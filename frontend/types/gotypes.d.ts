@@ -315,6 +315,14 @@ declare global {
         blockdef: BlockDef;
     };
 
+    // wshrpc.CommandCreateTabData
+    type CommandCreateTabData = {
+        workspaceid?: string;
+        tabname?: string;
+        activatetab?: boolean;
+        meta?: {[key: string]: string};
+    };
+
     // wshrpc.CommandDebugTermData
     type CommandDebugTermData = {
         blockid: string;
@@ -793,6 +801,12 @@ declare global {
         bindings: {[key: string]: string};
     };
 
+    // wshrpc.CommandWriteNoteData
+    type CommandWriteNoteData = {
+        content: string;
+        sourceoref: string;
+    };
+
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
         filename: string;
@@ -1020,6 +1034,8 @@ declare global {
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
+        version: string;
+        buildtime: string;
     };
 
     // waveobj.Job
@@ -1154,6 +1170,7 @@ declare global {
         "sysinfo:type"?: string;
         "tab:flagcolor"?: string;
         "tab:background"?: string;
+        "tab:locked"?: boolean;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
@@ -1194,6 +1211,8 @@ declare global {
         "web:useragenttype"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
+        "preview:followtermid"?: string;
+        "preview:followterm:bidir"?: boolean;
         "tsunami:*"?: boolean;
         "tsunami:sdkreplacepath"?: string;
         "tsunami:apppath"?: string;
@@ -1223,6 +1242,23 @@ declare global {
         color: string;
     };
 
+    // wshrpc.NoteData
+    type NoteData = {
+        content: string;
+        readonly?: boolean;
+        filepath?: string;
+        error?: string;
+    };
+
+    // wshrpc.NotesUpdatedData
+    type NotesUpdatedData = {
+        content: string;
+        sourceoref: string;
+        readonly?: boolean;
+        filepath?: string;
+        error?: string;
+    };
+
     // waveobj.ORef
     type ORef = string;
 
@@ -1247,6 +1283,7 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
+        "notes:cursorpos"?: number;
     };
 
     // wshrpc.PathCommandData
@@ -1423,6 +1460,7 @@ declare global {
         "term:osc52"?: string;
         "term:durable"?: boolean;
         "term:showsplitbuttons"?: boolean;
+        "term:trimtrailingwhitespace"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1481,6 +1519,7 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:sdkversion"?: string;
         "tsunami:gopath"?: string;
+        "notes:path"?: string;
     };
 
     // waveobj.StickerClickOptsType
@@ -1586,10 +1625,12 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
-        "wsh:haderror"?: boolean;
+        "wsh:errorcount"?: number;
+        "wsh:count"?: number;
         "conn:conntype"?: string;
         "conn:wsherrorcode"?: string;
         "conn:errorcode"?: string;
@@ -2009,53 +2050,6 @@ declare global {
         fullconfig: FullConfigType;
     };
 
-    // wshrpc.WaveAIOptsType
-    type WaveAIOptsType = {
-        model: string;
-        apitype?: string;
-        apitoken: string;
-        orgid?: string;
-        apiversion?: string;
-        baseurl?: string;
-        proxyurl?: string;
-        maxtokens?: number;
-        maxchoices?: number;
-        timeoutms?: number;
-    };
-
-    // wshrpc.WaveAIPacketType
-    type WaveAIPacketType = {
-        type: string;
-        model?: string;
-        created?: number;
-        finish_reason?: string;
-        usage?: WaveAIUsageType;
-        index?: number;
-        text?: string;
-        error?: string;
-    };
-
-    // wshrpc.WaveAIPromptMessageType
-    type WaveAIPromptMessageType = {
-        role: string;
-        content: string;
-        name?: string;
-    };
-
-    // wshrpc.WaveAIStreamRequest
-    type WaveAIStreamRequest = {
-        clientid?: string;
-        opts: WaveAIOptsType;
-        prompt: WaveAIPromptMessageType[];
-    };
-
-    // wshrpc.WaveAIUsageType
-    type WaveAIUsageType = {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
-    };
-
 
     // filestore.WaveFile
     type WaveFile = {
@@ -2095,6 +2089,7 @@ declare global {
         code: string;
         repeat?: boolean;
         location?: number;
+        isComposing?: boolean;
         shift?: boolean;
         control?: boolean;
         alt?: boolean;

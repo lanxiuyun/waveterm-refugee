@@ -91,6 +91,7 @@ const (
 
 	MetaKey_TabFlagColor                     = "tab:flagcolor"
 	MetaKey_TabBackground                    = "tab:background"
+	MetaKey_TabLocked                        = "tab:locked"
 
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
@@ -137,6 +138,9 @@ const (
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
+
+	MetaKey_PreviewFollowTermId              = "preview:followtermid"
+	MetaKey_PreviewFollowTermBidir           = "preview:followterm:bidir"
 
 	MetaKey_TsunamiClear                     = "tsunami:*"
 	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
